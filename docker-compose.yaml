@@ -1,0 +1,43 @@
+# Use root/example as user/password credentials
+version: '3.1'
+
+services:
+  mongo:
+    image: mongo
+    restart: always
+    container_name: mongo
+    hostname: mongo
+    env_file:
+      - mongodb.env
+    volumes:
+      - ./data/mongodb:/data/db
+    ports:
+      - 27017:27017
+    networks:
+      - mongo_net
+      - internal
+    entrypoint: ["mongod", "--bind_ip_all"]
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo mongo:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+  scraper:
+    build:
+      context: ./
+      dockerfile: ./docker/scraper/Dockerfile
+    restart: on-failure:3
+    depends_on:
+      mongo:
+        condition: service_healthy
+    env_file:
+      - .env
+      - scraper.env
+    networks:
+      - internal
+
+networks:
+  mongo_net:
+    driver: bridge
+  internal:
