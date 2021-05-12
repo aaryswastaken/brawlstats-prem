@@ -1,6 +1,6 @@
 ## brawlstats-prem
 
-This project is not affiliated whatsoever with [brawlstats](https://www.brawlstats.com/) developed by [overwolf](https://www.overwolf.com)
+This project is not affiliated whatsoever with [brawlstats](https://www.brawlstats.com/) developed by [overwolf](https://www.overwolf.com) neither with [brawlstars](https://supercell.com/en/games/brawlstars/) developed by [supercell](https://supercell.com/) although this program uses brawlstar's API 
 
 ### How to run :
 
