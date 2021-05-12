@@ -27,6 +27,8 @@ services:
     build:
       context: ./
       dockerfile: ./docker/scraper/Dockerfile
+    container_name: scraper
+    hostname: scraper
     restart: on-failure:3
     depends_on:
       mongo:
@@ -40,6 +42,8 @@ services:
     build:
       context: ./web
       dockerfile: ../docker/web/Dockerfile
+    container_name: web
+    hostname: web
     depends_on:
       mongo:
         condition: service_healthy
