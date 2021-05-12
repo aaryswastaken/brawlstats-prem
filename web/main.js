@@ -101,6 +101,15 @@ fastify.post("/graphs", (req, res) => {
     res.send(getGraphs());
 })
 
+fastify.post("/brawlers", async (req, res) => {
+    let lastUser = await coll.find({"player": {"$ne": null}}).sort({"epoch": -1}).project({"player": 1}).limit(1).toArray();
+    lastUser = lastUser[0].player;
+    
+    let brawlers = lastUser.brawlers;
+
+    res.send(brawlers)
+})
+
 MongoClient.connect(url, function(err, db) {
     if (err) {
         console.log("Error : "+url+"\n" + err);

@@ -68,86 +68,42 @@
     req.send();
 
     ////////////////////////////////////////////
-    req2 = new XMLHttpRequest();
 
-    let brawlerJSON = {};
+    function setupSel(then=()=>{}) {
+        let selREQ = new XMLHttpRequest();
 
-    req2.onreadystatechange = function () {
-        if (this.readyState === 4 && this.status === 200) {
-            let json = JSON.parse(this.responseText);
+        selREQ.onreadystatechange = function () {
+            if (this.readyState === 4 && this.status === 200) {
+                console.log(this.responseText);
+                let brawlers = JSON.parse(this.responseText);
 
-            console.log(json);
+                let id = 0;
 
-            brawlerGraph(json);
-            brawlerJSON = json;
-        }
-    }
-    req2.open("POST", '/api?need_player=1&project={"epoch": 1, "player.brawlers": 1}', true);
-    req2.send();
-
-    function brawlerGraph(json, sel=NaN) {
-        let develop = [];
-        let brawlers = [];
-
-        // typeof sel === 'number' -> true if sel=NaN | false if sel is an array
-        if(typeof sel === 'number') { // With high amount of data, it is preferable to put this if here instead of inside the loop
-            json.ans.forEach(e => {
-                e.player.brawlers.forEach(b => {
-                    develop.push({epoch: new Date(e.epoch).getTime(), trophies: b.trophies, brawler: b.name})
-                    if (!brawlers.includes(b.name)) {
-                        brawlers.push(b.name);
+                brawlers.map(b => b.name).forEach(brawler => {
+                    if(id % maxSel === 0) {
+                        let s = document.createElement("div");
+                        s.id = `selection${ (id - id % maxSel) / maxSel }`;
+                        document.getElementById("selection").appendChild(s);
                     }
+                    let l = brawler.toLowerCase();
+                    let f = brawler.slice(0, 1) + l.slice(1, brawler.length);
+                    document.getElementById(`selection${ (id - id % maxSel) / maxSel }`).innerHTML += `<div id="${l}Div"><input type="checkbox" class="selection" id="${l}" checked> <label for="${l}" id="${l}Label">${f}</label></div>`;
+
+                    id += 1;
                 });
-            });
 
-            let id = 0;
+                console.log(brawlers);
 
-            brawlers.forEach(brawler => {
-                if(id % maxSel === 0) {
-                    let s = document.createElement("div");
-                    s.id = `selection${ (id - id % maxSel) / maxSel }`;
-                    document.getElementById("selection").appendChild(s);
-                }
-                let l = brawler.toLowerCase();
-                let f = brawler.slice(0, 1) + l.slice(1, brawler.length);
-                document.getElementById(`selection${ (id - id % maxSel) / maxSel }`).innerHTML += `<div id="${l}Div"><input type="checkbox" class="selection" id="${l}" checked> <label for="${l}" id="${l}Label">${f}</label></div>`;
-
-                id += 1;
-            })
-
-            console.log(brawlers);
-        } else {
-            json.ans.forEach(e => {
-                e.player.brawlers.forEach(b => {
-                    if(sel.includes(b.name)) {
-                        develop.push({epoch: new Date(e.epoch).getTime(), trophies: b.trophies, brawler: b.name})
-                    }
-
-                    if (!brawlers.includes(b.name)) {
-                        brawlers.push(b.name);
-                    }
-                });
-            });
+                then();
+            }
         }
-
-        document.getElementById("brawlers").innerHTML = "";
-
-        document.getElementById("brawlers").appendChild(Plot.plot({
-            ...stdParam,
-            x: {
-                type: "time"
-            },
-            y: {
-                grid: true
-            },
-            marks: [
-                Plot.line(develop, {x: "epoch", y: "trophies", z: "brawler", stroke: "brawler"}),
-                Plot.text(develop, Plot.selectLast({x: "epoch", y: "trophies", z: "brawler", text: "brawler", textAnchor: "start", dx: 3}))
-            ]
-        }))
+        
+        selREQ.open("POST", "/brawlers", true);
+        selREQ.send();
     }
 
     var refreshBrawlers = () => {
+        let brawlerREQ = new XMLHttpRequest();
         let selDOM = document.getElementsByClassName("selection");
         let sel = [];
 
@@ -157,8 +113,49 @@
             }
         });
 
-        brawlerGraph(brawlerJSON, sel);
+        brawlerREQ.onreadystatechange = function () {
+            if (this.readyState === 4 && this.status === 200) {
+                let json = JSON.parse(this.responseText);
+
+                let develop = [];
+                // let brawlers = [];
+
+                json.ans.forEach(e => {
+                    e.player.brawlers.forEach(b => {
+                        if(sel.includes(b.name)) {
+                            develop.push({epoch: new Date(e.epoch).getTime(), trophies: b.trophies, brawler: b.name})
+                        }
+
+                        // if (!brawlers.includes(b.name)) {
+                        //     brawlers.push(b.name);
+                        // }
+                    });
+                });
+
+                document.getElementById("brawlers").innerHTML = "";
+
+                document.getElementById("brawlers").appendChild(Plot.plot({
+                    ...stdParam,
+                    x: {
+                        type: "time"
+                    },
+                    y: {
+                        grid: true
+                    },
+                    marks: [
+                        Plot.line(develop, {x: "epoch", y: "trophies", z: "brawler", stroke: "brawler"}),
+                        Plot.text(develop, Plot.selectLast({x: "epoch", y: "trophies", z: "brawler", text: "brawler", textAnchor: "start", dx: 3}))
+                    ]
+                }))
+            }
+        }
+        brawlerREQ.open("POST", `/api?need_player=1&project={"epoch": 1, "player.brawlers": 1}&brawler=${JSON.stringify(sel)}`, true);
+        brawlerREQ.send();
     }
+
+    setupSel(() => {
+        refreshBrawlers();
+    });
 
     var unselAllBrawlers = () => {
         Array.from(document.getElementsByClassName("selection")).forEach(e => {
