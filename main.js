@@ -47,14 +47,51 @@ let c = (latest, callback) => {
         });
 }
 
+function parseDate(str) {
+    return new Date(Date.parse(`${str.slice(0, 4)}-${str.slice(4, 6)}-${str.slice(6, 8)}T${str.slice(9, 11)}:${str.slice(11, 13)}:${str.slice(13, 15)}`))
+}
+
+function extractPlayer(obj) {
+    let source = [];
+
+    if("teams" in obj["battle"]) {
+        obj["battle"]["teams"].forEach(team => {
+            team.forEach(player => {source.push(player)})
+        })
+    }
+
+    if("players" in obj["battle"]) {
+        source = obj["battle"]["players"]
+    }
+
+    let ans = {};
+
+    source.forEach(player => {
+        if(player.tag === process.env["PLAYER_TAG"]) {
+            ans = player;
+        }
+    });
+
+    return ans
+}
+
 function start(collection) {
     collection.find().sort({battleTime:-1}).limit(30).toArray().then(last => {
         c(last, (difference) => {
             client.getPlayer(process.env["PLAYER_TAG"])
                 .then((player) => {
                     let tmp = [];
-                    difference.forEach( battle => { tmp.push({...battle, player: undefined}); } );
-                    tmp[0].player = player;
+                    difference.forEach( battle => {
+                        tmp.push({
+                            ...battle,
+                            player: undefined,  // add the player field to every record
+                            epoch: parseDate(battle["battleTime"]),
+                            extracted: {
+                                player: extractPlayer(battle)
+                            }
+                        });
+                    });
+                    tmp[0].player = player;  // add the player informations to the latest
                     collection.insertMany(tmp);
                 })
                 .catch((err) => {
