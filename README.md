@@ -25,7 +25,7 @@ MONGO_INITDB_DATABASE=stats
 
 Note that the parameter `MONGO_INITDB_DATABASE` is the one used in [main.js](https://github.com/vsahler/brawlstats-prem/blob/main/main.js) in the variable `dbname`
 
-The DB_IP parameter is overwritten by [scraper.env](https://github.com/vsahler/brawlstats-prem/blob/main/scraper.env) when used in the docker, as set in [docker-compose.yaml](https://github.com/vsahler/brawlstats-prem/blob/main/docker-compose.yaml)
+The DB_IP parameter is overwritten by [docker.env](https://github.com/vsahler/brawlstats-prem/blob/main/docker.env) when used in the docker, as set in [docker-compose.yaml](https://github.com/vsahler/brawlstats-prem/blob/main/docker-compose.yaml)
 
 Then you just have to run `docker-compose up -d` to start the containers.
 
