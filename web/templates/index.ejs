@@ -1,0 +1,174 @@
+<script src="https://cdn.jsdelivr.net/npm/d3@6"></script>
+<script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.1"></script>
+<title>User stats</title>
+
+<table>
+    <tr>
+        <th><div id="trophies"></div></th>
+    </tr>
+
+    <tr>
+        <th><div id="brawlers"></div></th>
+        <th>
+            <div id="selection">
+            </div>
+            <div id="selButtons">
+                <button onclick="refreshBrawlers()">Refresh</button>
+                <button onclick="unselAllBrawlers()">Unselect All</button>
+                <button onclick="selAllBrawlers()">Select All</button>
+            </div>
+        </th>
+    </tr>
+</table>
+
+
+<style>
+    table {
+        width: 100%;
+    }
+
+    #selection {
+        display: flex;
+    }
+</style>
+
+<script>
+    let graphs = JSON.parse("<%= JSON.stringify(graphs) %>".replace(/&#34;/gm, "\""));
+
+    var req = new XMLHttpRequest();
+
+    const maxSel = 10;
+
+    let stdParam = {
+        marginRight: 50,
+        width: Number.parseInt((window.outerWidth * 3 / 5).toString().split(".")[0], 10)
+    }
+
+    req.onreadystatechange = function () {
+        if (this.readyState === 4 && this.status === 200) {
+            let json = JSON.parse(this.responseText);
+
+            console.log(json);
+
+            document.getElementById("trophies").appendChild(Plot.plot({
+                ...stdParam,
+                x: {
+                    type: "time"
+                },
+                y: {
+                    grid: true
+                },
+                marks: [
+                    Plot.line(json.ans.map(res => {return {epoch: new Date(res.epoch).getTime(), trophies: res.player.trophies}}), {x: "epoch", y: "trophies"})
+                ]
+            }))
+        }
+    }
+    req.open("POST", '/api?need_player=1&project={"epoch": 1, "player.trophies": 1}', true);
+    req.send();
+
+    ////////////////////////////////////////////
+    req2 = new XMLHttpRequest();
+
+    let brawlerJSON = {};
+
+    req2.onreadystatechange = function () {
+        if (this.readyState === 4 && this.status === 200) {
+            let json = JSON.parse(this.responseText);
+
+            console.log(json);
+
+            brawlerGraph(json);
+            brawlerJSON = json;
+        }
+    }
+    req2.open("POST", '/api?need_player=1&project={"epoch": 1, "player.brawlers": 1}', true);
+    req2.send();
+
+    function brawlerGraph(json, sel=NaN) {
+        let develop = [];
+        let brawlers = [];
+
+        // typeof sel === 'number' -> true if sel=NaN | false if sel is an array
+        if(typeof sel === 'number') { // With high amount of data, it is preferable to put this if here instead of inside the loop
+            json.ans.forEach(e => {
+                e.player.brawlers.forEach(b => {
+                    develop.push({epoch: new Date(e.epoch).getTime(), trophies: b.trophies, brawler: b.name})
+                    if (!brawlers.includes(b.name)) {
+                        brawlers.push(b.name);
+                    }
+                });
+            });
+
+            let id = 0;
+
+            brawlers.forEach(brawler => {
+                if(id % maxSel === 0) {
+                    let s = document.createElement("div");
+                    s.id = `selection${ (id - id % maxSel) / maxSel }`;
+                    document.getElementById("selection").appendChild(s);
+                }
+                let l = brawler.toLowerCase();
+                let f = brawler.slice(0, 1) + l.slice(1, brawler.length);
+                document.getElementById(`selection${ (id - id % maxSel) / maxSel }`).innerHTML += `<div id="${l}Div"><input type="checkbox" class="selection" id="${l}" checked> <label for="${l}" id="${l}Label">${f}</label></div>`;
+
+                id += 1;
+            })
+
+            console.log(brawlers);
+        } else {
+            json.ans.forEach(e => {
+                e.player.brawlers.forEach(b => {
+                    if(sel.includes(b.name)) {
+                        develop.push({epoch: new Date(e.epoch).getTime(), trophies: b.trophies, brawler: b.name})
+                    }
+
+                    if (!brawlers.includes(b.name)) {
+                        brawlers.push(b.name);
+                    }
+                });
+            });
+        }
+
+        document.getElementById("brawlers").innerHTML = "";
+
+        document.getElementById("brawlers").appendChild(Plot.plot({
+            ...stdParam,
+            x: {
+                type: "time"
+            },
+            y: {
+                grid: true
+            },
+            marks: [
+                Plot.line(develop, {x: "epoch", y: "trophies", z: "brawler", stroke: "brawler"}),
+                Plot.text(develop, Plot.selectLast({x: "epoch", y: "trophies", z: "brawler", text: "brawler", textAnchor: "start", dx: 3}))
+            ]
+        }))
+    }
+
+    var refreshBrawlers = () => {
+        let selDOM = document.getElementsByClassName("selection");
+        let sel = [];
+
+        Array.from(selDOM).forEach(e => {
+            if(e.checked) {
+                sel.push(e.id.toUpperCase());
+            }
+        });
+
+        brawlerGraph(brawlerJSON, sel);
+    }
+
+    var unselAllBrawlers = () => {
+        Array.from(document.getElementsByClassName("selection")).forEach(e => {
+            e.checked = false;
+        })
+    }
+
+    var selAllBrawlers = () => {
+        Array.from(document.getElementsByClassName("selection")).forEach(e => {
+            e.checked = true;
+        })
+    }
+</script>

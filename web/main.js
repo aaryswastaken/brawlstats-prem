@@ -1,4 +1,5 @@
 require('dotenv').config({path: __dirname + '/.env'});
+const fs = require("fs");
 
 const mongodb = require("mongodb");
 let MongoClient = mongodb.MongoClient;
@@ -13,9 +14,11 @@ const fastify = require('fastify')({
     ignoreTrailingSlash: true
 })
 
-fastify.get('/', function (req, res) {
-    res.send('foo')
-});
+fastify.register(require('point-of-view'), {
+    engine: {
+        ejs: require('ejs')
+    }
+})
 
 function secondLevel(obj, first, second, value) {
     if(!(first in obj)) {
@@ -27,11 +30,23 @@ function secondLevel(obj, first, second, value) {
     return obj; // Optional as node.js object are pointers
 }
 
+function getGraphs() {
+    return JSON.parse(fs.readFileSync("./graphs.json"));
+}
+
+
+fastify.get('/', (req, res) => {
+    let graphs = getGraphs();
+    res.view('/templates/index.ejs', {graphs});
+});
+
 fastify.post("/api", async (req, res) => {
     // req.query
     let query = {};
     let flags = {};
     let limit = 0;
+    let project = {};
+    let sort = {"epoch": -1}; // Default : sort from newer to older
 
     if("start_time" in req.query) {
         let epoch = Number.parseInt(req.query["start_time"], 10);
@@ -48,7 +63,11 @@ fastify.post("/api", async (req, res) => {
     }
 
     if("ranked" in req.query) {
-        secondLevel(query, "battle.type", (req.query["ranked"] === 0 ? "$ne":"$eq"), "ranked")
+        secondLevel(query, "battle.type", (req.query["ranked"] === "0" ? "$ne":"$eq"), "ranked")
+    }
+
+    if("need_player" in req.query) {
+        secondLevel(query, "player", (req.query["need_player"] !== "0" ? "$ne":"$eq"), null)
     }
 
     if("brawler" in req.query) {
@@ -65,11 +84,22 @@ fastify.post("/api", async (req, res) => {
         limit = (isNaN(limit) ? 0:limit); // There sure do have a better way to do this but it works
     }
 
-    let ans = await coll.find(query).limit(limit).toArray();
+    if("project" in req.query) {
+        project = JSON.parse(req.query["project"]);
+    }
 
-    res.send({query, flags, limit, ans});
+    if("sort" in req.query) {
+        sort = JSON.parse(req.query["sort"]);
+    }
+
+    let ans = await coll.find(query).sort({"epoch": -1}).project(project).limit(limit).toArray();
+
+    res.send({l: ans.length, query, flags, limit, ans});
 });
 
+fastify.post("/graphs", (req, res) => {
+    res.send(getGraphs());
+})
 
 MongoClient.connect(url, function(err, db) {
     if (err) {
