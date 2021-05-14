@@ -1,23 +1,41 @@
+<!--suppress JSCheckFunctionSignatures -->
 <script src="https://cdn.jsdelivr.net/npm/d3@6"></script>
 <script src="https://cdn.jsdelivr.net/npm/@observablehq/plot@0.1"></script>
 <title>User stats</title>
 
 <table>
     <tr>
-        <th><div id="trophies"></div></th>
+        <th colspan="2"><div id="trophies"></div></th>
+        <th>
+            <div id="dateSel">
+                <div>
+                    <label id="start-timeLabel" for="start-time">Start time:</label>
+                    <input type="datetime-local" id="start-time" name="start-time">
+                </div>
+
+                <div>
+                    <label id="stop-timeLabel" for="stop-time">Stop time:</label>
+                    <input type="datetime-local" id="stop-time" name="stop-time">
+                </div>
+            </div>
+        </th>
     </tr>
 
     <tr>
-        <th><div id="brawlers"></div></th>
+        <th colspan="2"><div id="brawlers"></div></th>
         <th>
-            <div id="selection">
-            </div>
+            <div id="selection"></div>
             <div id="selButtons">
-                <button onclick="refreshBrawlers()">Refresh</button>
+                <button id="refreshBrawler">Refresh</button>
                 <button onclick="unselAllBrawlers()">Unselect All</button>
                 <button onclick="selAllBrawlers()">Select All</button>
             </div>
         </th>
+    </tr>
+
+    <tr>
+        <th><div id="ranks"></div></th>
+        <th><div id="rankHisto"></div></th>
     </tr>
 </table>
 
@@ -30,51 +48,70 @@
     #selection {
         display: flex;
     }
+
+    #ranks {
+        display: flex;
+        flex-direction: row;
+    }
+
+    /* th > div {
+        margin-top: 30px;
+        margin-bottom: 10px;
+    } */
+
+    #dateSel > * {
+        margin: 20px;
+    }
 </style>
 
 <script>
     let graphs = JSON.parse("<%= JSON.stringify(graphs) %>".replace(/&#34;/gm, "\""));
 
-    var req = new XMLHttpRequest();
-
     const maxSel = 10;
 
     let stdParam = {
         marginRight: 50,
+        marginTop: 20,
+        marginBottom: 100,
         width: Number.parseInt((window.outerWidth * 3 / 5).toString().split(".")[0], 10)
     }
 
-    req.onreadystatechange = function () {
-        if (this.readyState === 4 && this.status === 200) {
-            let json = JSON.parse(this.responseText);
+    function setupDateSelection() {
+        let selREQ = new XMLHttpRequest();
 
-            console.log(json);
+        selREQ.onreadystatechange = function () {
+            if (this.readyState === 4 && this.status === 200) {
+                let dates = JSON.parse(this.responseText);
 
-            document.getElementById("trophies").appendChild(Plot.plot({
-                ...stdParam,
-                x: {
-                    type: "time"
-                },
-                y: {
-                    grid: true
-                },
-                marks: [
-                    Plot.line(json.ans.map(res => {return {epoch: new Date(res.epoch).getTime(), trophies: res.player.trophies}}), {x: "epoch", y: "trophies"})
-                ]
-            }))
+                let parsed = {
+                    start: new Date(dates.start),
+                    end: new Date(dates.end)
+                }
+
+                console.log({dates, parsed});
+
+                document.getElementById("start-time").min = parsed.start;
+                document.getElementById("stop-time").min = parsed.start;
+
+                document.getElementById("start-time").max = parsed.end;
+                document.getElementById("stop-time").max = parsed.end;
+
+                parsed.start.setMinutes(parsed.start.getMinutes() - parsed.start.getTimezoneOffset());
+                document.getElementById('start-time').value = parsed.start.toISOString().slice(0,16);
+                parsed.end.setMinutes(parsed.end.getMinutes() - parsed.end.getTimezoneOffset());
+                document.getElementById('stop-time').value = parsed.end.toISOString().slice(0,16);
+            }
         }
-    }
-    req.open("POST", '/api?need_player=1&project={"epoch": 1, "player.trophies": 1}', true);
-    req.send();
 
-    ////////////////////////////////////////////
+        selREQ.open("POST", "/interval", true);
+        selREQ.send();
+    }
 
     function setupSel(then=()=>{}) {
         let selREQ = new XMLHttpRequest();
 
         selREQ.onreadystatechange = function () {
             if (this.readyState === 4 && this.status === 200) {
-                console.log(this.responseText);
                 let brawlers = JSON.parse(this.responseText);
 
                 let id = 0;
@@ -94,16 +131,18 @@
 
                 console.log(brawlers);
 
+                document.getElementById("refreshBrawler").onclick = then;
+
+                setupDateSelection();
                 then();
             }
         }
-        
+
         selREQ.open("POST", "/brawlers", true);
         selREQ.send();
     }
 
-    var refreshBrawlers = () => {
-        let brawlerREQ = new XMLHttpRequest();
+    function getBrawlerSelection() {
         let selDOM = document.getElementsByClassName("selection");
         let sel = [];
 
@@ -113,12 +152,56 @@
             }
         });
 
+        return sel;
+    }
+
+    function brawlerSuffix() {
+        return `&brawler=${JSON.stringify(getBrawlerSelection())}`;
+    }
+
+    function timeSelSuffix() {
+        return `&start_time=${new Date(document.getElementById('start-time').value).getTime()}&stop_time=${new Date(document.getElementById('stop-time').value).getTime()}`
+    }
+
+    function refreshTRGraph () {
+        var req = new XMLHttpRequest();
+
+        req.onreadystatechange = function () {
+            if (this.readyState === 4 && this.status === 200) {
+                let json = JSON.parse(this.responseText);
+
+                console.log(json);
+
+                document.getElementById("trophies").innerHTML = "";
+                document.getElementById("trophies").appendChild(Plot.plot({
+                    ...stdParam,
+                    x: {
+                        type: "time"
+                    },
+                    y: {
+                        grid: true
+                    },
+                    marks: [
+                        Plot.line(json.ans.map(res => {
+                            return {epoch: new Date(res.epoch).getTime(), trophies: res.player.trophies}
+                        }), {x: "epoch", y: "trophies"})
+                    ]
+                }))
+            }
+        }
+        req.open("POST", '/api?need_player=1&project={"epoch": 1, "player.trophies": 1}'+timeSelSuffix(), true);
+        req.send();
+    }
+
+    var refreshBrawlers = () => {
+        let brawlerREQ = new XMLHttpRequest();
+
         brawlerREQ.onreadystatechange = function () {
             if (this.readyState === 4 && this.status === 200) {
                 let json = JSON.parse(this.responseText);
 
                 let develop = [];
-                // let brawlers = [];
+                let sel = getBrawlerSelection();
 
                 json.ans.forEach(e => {
                     e.player.brawlers.forEach(b => {
@@ -144,18 +227,14 @@
                     },
                     marks: [
                         Plot.line(develop, {x: "epoch", y: "trophies", z: "brawler", stroke: "brawler"}),
-                        Plot.text(develop, Plot.selectLast({x: "epoch", y: "trophies", z: "brawler", text: "brawler", textAnchor: "start", dx: 3}))
+                        Plot.text(develop, Plot.selectFirst({x: "epoch", y: "trophies", z: "brawler", text: "brawler", textAnchor: "start", dx: 3}))
                     ]
                 }))
             }
         }
-        brawlerREQ.open("POST", `/api?need_player=1&project={"epoch": 1, "player.brawlers": 1}&brawler=${JSON.stringify(sel)}`, true);
+        brawlerREQ.open("POST", `/api?need_player=1&project={"epoch": 1, "player.brawlers": 1}`+timeSelSuffix(), true);
         brawlerREQ.send();
     }
-
-    setupSel(() => {
-        refreshBrawlers();
-    });
 
     var unselAllBrawlers = () => {
         Array.from(document.getElementsByClassName("selection")).forEach(e => {
@@ -168,4 +247,143 @@
             e.checked = true;
         })
     }
+
+    /////////////////////////////////////////////////////
+    var refreshRankGraphLAST = () => {
+        let matchsREQ = new XMLHttpRequest();
+
+        let sel = getBrawlerSelection();
+
+        matchsREQ.onreadystatechange = function () {
+            if(this.readyState === 4 && this.status === 200) {
+                let json = JSON.parse(this.responseText);
+
+                let payload = [];
+
+                payload = json.ans.map(e => {
+                    return {rank: e.battle.rank, epoch: new Date(e.epoch).getTime(), brawler: e.extracted.player.brawler.name};
+                });
+
+                document.getElementById("ranks").innerHTML = "";
+                document.getElementById("ranks").appendChild(Plot.plot({
+                    ...stdParam,
+                    x: {
+                        type: "time",
+                    },
+                    y: {
+                        grid: true,
+                    },
+                    marks: [
+                        // Plot.dot(payload, {x: "epoch", y: "rank", r: 3, stroke: "brawler"})
+                    ]
+                }));
+            }
+        }
+
+        matchsREQ.open("POST", `/api?mode=["soloShowdown"]&project={"epoch": 1, "battle.rank": 1, "extracted.player.brawler.name": 1}&brawler=${JSON.stringify(sel)}`, true);
+        matchsREQ.send();
+        console.log("SENT")
+    }
+
+    var refreshRankGraph = () => {
+        let matchsREQ = new XMLHttpRequest();
+
+        let sel = getBrawlerSelection();
+
+        matchsREQ.onreadystatechange = function () {
+            if(this.readyState === 4 && this.status === 200) {
+                let json = JSON.parse(this.responseText);
+
+                let last = "";
+                let sum = 0;
+                let divider = 0;
+
+                let computed = [];
+                let averages = []
+
+                let n = 0;
+                let max = 6;
+
+                // -------------- CALCULATE AVERAGES TROPHIES ---------
+
+                json.soloRank.forEach((rank) => {
+                    if (n < max) {
+                        if (rank.date !== last) {
+                            if (sum !== 0) {
+                                n += 1;
+
+                                averages.push({
+                                    average: sum / divider,
+                                    date: last
+                                });
+
+                                sum = 0;
+                                divider = 0;
+                            }
+
+                            last = rank.date;
+                        }
+
+                        computed.push({
+                            ...rank,
+                            avg: 0
+                        });
+
+                        sum += rank.battleCount * rank.rank;
+                        divider += rank.battleCount;
+                    }
+                });
+
+                averages.push({
+                    average: sum / divider,
+                    date: last
+                });
+
+                console.log(averages)
+                // -------------- END OF COMPUTING --------------
+
+                document.getElementById("ranks").innerHTML = "";
+                document.getElementById("ranks").appendChild(Plot.plot({
+                    height: 480,
+                    x: {
+                        axis: "top",
+                        label: "Date"
+                    },
+                    y: {
+                        label: "Rank"
+                    },
+                    color: {
+                        scheme: "ylorbr"
+                    },
+                    marks: [
+                        Plot.cell(computed, {x: "date", y: "rank", fill: "battleCount"}),
+                        Plot.text(computed, {x: "date", y: "rank", text: "battleCount", fontSize: 12})
+                    ]
+                }));
+
+                document.getElementById("ranks").appendChild(Plot.plot({
+                    height: 480,
+                    y: {
+                        grid: true,
+                        domain: [0, 10]
+                    },
+                    marks: [
+                        Plot.line(averages, {x: "date", y: "average"}),
+                        Plot.dot(averages, {x: "date", y: "average"}),
+                        Plot.text(averages, {x: "date", y: "average", text: (n)=>{return n.average.toFixed(2)}, fontSize: 15, dy: -10})
+                    ]
+                }));
+            }
+        }
+
+        matchsREQ.open("POST", `/ranks`, true);
+        matchsREQ.send();
+        console.log("SENT")
+    }
+
+    setupSel(() => {
+        refreshTRGraph();
+        refreshBrawlers();
+        refreshRankGraph();
+    });
 </script>

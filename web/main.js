@@ -109,6 +109,104 @@ fastify.post("/brawlers", async function (req, res) {
     res.send(brawlers);
 });
 
+fastify.post("/ranks", async function (req, res) {
+    let limit = 0;
+    if("limit" in req.query) {
+        limit = Number.parseInt(req.query["limit"], 10);
+        limit = (isNaN(limit) ? 0:limit); // There sure do have a better way to do this but it works
+    }
+
+    // This counts how many solo game winned with specific rank
+    let soloRank = await coll.aggregate([
+        {
+            '$match': {
+                'battle.mode': {
+                    '$eq': 'soloShowdown'
+                }
+            }
+        }, {
+            '$group': {
+                '_id': {
+                    'date': {
+                        '$dateToString': {
+                            'format': '%Y-%m-%d',
+                            'date': '$epoch'
+                        }
+                    },
+                    'rank': '$battle.rank'
+                },
+                'battleCount': {
+                    '$sum': 1
+                }
+            }
+        }, {
+            '$sort': {
+                '_id.date': -1,
+                '_id.rank': 1
+            }
+        }, {
+            '$addFields': {
+                'rank': '$_id.rank',
+                'date': '$_id.date'
+            }
+        }, {
+            '$project': {
+                '_id': 0
+            }
+        }
+    ]).toArray();
+
+    let soloStats = await coll.aggregate([
+        {
+            '$match': {
+                'battle.mode': {
+                    '$eq': 'soloShowdown'
+                }
+            }
+        }, {
+            '$group': {
+                '_id': {
+                    '$dateToString': {
+                        'format': '%Y-%m-%d',
+                        'date': '$epoch'
+                    }
+                },
+                'averageRank': {
+                    '$avg': '$battle.rank'
+                },
+                'totalTRChange': {
+                    '$sum': '$battle.trophyChange'
+                }
+            }
+        }
+    ]).toArray();
+
+    let dailyTRStats = await coll.aggregate([
+        {
+            '$group': {
+                '_id': {
+                    '$dateToString': {
+                        'format': '%Y-%m-%d',
+                        'date': '$epoch'
+                    }
+                },
+                'totalTRChange': {
+                    '$sum': '$battle.trophyChange'
+                }
+            }
+        }
+    ]).toArray();
+
+    res.send({soloRank, soloStats, dailyTRStats});
+});
+
+fastify.post("/interval", async function (req, res) {
+    let first = await coll.find({"epoch": {"$ne": null}}).sort({"epoch": -1}).project({"epoch": 1}).limit(1).toArray();
+    let last =  await coll.find({"epoch": {"$ne": null}}).sort({"epoch": 1} ).project({"epoch": 1}).limit(1).toArray();
+
+    res.send({start: new Date(last[0].epoch), end: new Date(first[0].epoch)})
+});
+
 MongoClient.connect(url, function(err, db) {
     if (err) {
         /* eslint no-console: ["error", { allow: ["warn", "error"] }] */
