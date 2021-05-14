@@ -11,11 +11,14 @@
                 <div>
                     <label id="start-timeLabel" for="start-time">Start time:</label>
                     <input type="datetime-local" id="start-time" name="start-time">
+                    <input type="checkbox" id="startEnable">
+
                 </div>
 
                 <div>
                     <label id="stop-timeLabel" for="stop-time">Stop time:</label>
                     <input type="datetime-local" id="stop-time" name="stop-time">
+                    <input type="checkbox" id="stopEnable">
                 </div>
             </div>
             <button id="datereset">Reset</button>
@@ -170,8 +173,16 @@
         return {start: new Date(document.getElementById('start-time').value), end: new Date(document.getElementById('stop-time').value)}
     }
 
+    function timeEn() {
+        return {start: document.getElementById("startEnable").checked, stop: document.getElementById("stopEnable").checked}
+    }
+
     function timeSelSuffix() {
-        return `&start_time=${fetchTimeSel().start.getTime()}&stop_time=${fetchTimeSel().end.getTime()}`
+        let start = `&start_time=${fetchTimeSel().start.getTime()}`;
+        let stop = `&end_time=${fetchTimeSel().end.getTime()}`;
+        let ans = (document.getElementById("startEnable").checked ? start:"")+(document.getElementById("stopEnable").checked ? stop:"");
+        console.log({timeSelSuffix: ans})
+        return ans
     }
 
     function refreshTRGraph () {
@@ -183,18 +194,29 @@
 
                 console.log(json);
 
-                let bounded = [
-                    {epoch: fetchTimeSel().end.getTime(), trophies: json.ans[0].player.trophies},
-                    ...json.ans.map(res => {return {epoch: new Date(res.epoch).getTime(), trophies: res.player.trophies};}),
-                    {epoch: fetchTimeSel().start.getTime(), trophies: json.ans[json.ans.length-1].player.trophies}
-                ];
+                // let bounded = [
+                //     {epoch: fetchTimeSel().end.getTime(), trophies: json.ans[0].player.trophies},
+                //     ...json.ans.map(res => {return {epoch: new Date(res.epoch).getTime(), trophies: res.player.trophies};}),
+                //     {epoch: fetchTimeSel().start.getTime(), trophies: json.ans[json.ans.length-1].player.trophies}
+                // ];
+                let bounded = json.ans.map(res => {return {epoch: new Date(res.epoch).getTime(), trophies: res.player.trophies};});
+
+                if(timeEn().start) {
+                    console.log("START EN");
+                    bounded = [...bounded, {epoch: fetchTimeSel().start.getTime(), trophies: json.ans[json.ans.length-1].player.trophies}];
+                }
+
+                if(timeEn().stop) {
+                    console.log("STOP EN");
+                    bounded = [{epoch: fetchTimeSel().end.getTime(), trophies: json.ans[0].player.trophies}, ...bounded]
+                }
 
                 document.getElementById("trophies").innerHTML = "";
                 document.getElementById("trophies").appendChild(Plot.plot({
                     ...stdParam,
                     x: {
                         type: "time",
-                        domain: [fetchTimeSel().start.getTime(), fetchTimeSel().end.getTime()]
+                        // domain: [fetchTimeSel().start.getTime(), fetchTimeSel().end.getTime()]  // DEPRECATED
                     },
                     y: {
                         grid: true
@@ -247,7 +269,17 @@
                 console.log({first, last});
                 console.log("===============");
 
-                develop = [...first, ...develop, ...last]
+                // develop = [...first, ...develop, ...last]
+
+                if(timeEn().start) {
+                    console.log("START EN");
+                    develop = [...develop, ...last];
+                }
+
+                if(timeEn().stop) {
+                    console.log("STOP EN");
+                    develop = [...first, ...develop];
+                }
 
                 console.log("------------------------------------------");
                 console.log({develop});
@@ -258,7 +290,7 @@
                     ...stdParam,
                     x: {
                         type: "time",
-                        domain: [fetchTimeSel().start.getTime(), fetchTimeSel().end.getTime()]
+                        // domain: [fetchTimeSel().start.getTime(), fetchTimeSel().end.getTime()]
                     },
                     y: {
                         grid: true
