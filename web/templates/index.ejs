@@ -18,6 +18,7 @@
                     <input type="datetime-local" id="stop-time" name="stop-time">
                 </div>
             </div>
+            <button id="datereset">Reset</button>
         </th>
     </tr>
 
@@ -96,10 +97,15 @@
                 document.getElementById("start-time").max = parsed.end;
                 document.getElementById("stop-time").max = parsed.end;
 
-                parsed.start.setMinutes(parsed.start.getMinutes() - parsed.start.getTimezoneOffset());
-                document.getElementById('start-time').value = parsed.start.toISOString().slice(0,16);
-                parsed.end.setMinutes(parsed.end.getMinutes() - parsed.end.getTimezoneOffset());
-                document.getElementById('stop-time').value = parsed.end.toISOString().slice(0,16);
+                let dateReset = () => {
+                    parsed.start.setMinutes(parsed.start.getMinutes() - parsed.start.getTimezoneOffset());
+                    document.getElementById('start-time').value = parsed.start.toISOString().slice(0, 16);
+                    parsed.end.setMinutes(parsed.end.getMinutes() - parsed.end.getTimezoneOffset());
+                    document.getElementById('stop-time').value = parsed.end.toISOString().slice(0, 16);
+                }
+
+                document.getElementById("datereset").onclick = dateReset;
+                dateReset();
             }
         }
 
@@ -159,8 +165,12 @@
         return `&brawler=${JSON.stringify(getBrawlerSelection())}`;
     }
 
+    function fetchTimeSel() {
+        return {start: new Date(document.getElementById('start-time').value), end: new Date(document.getElementById('stop-time').value)}
+    }
+
     function timeSelSuffix() {
-        return `&start_time=${new Date(document.getElementById('start-time').value).getTime()}&stop_time=${new Date(document.getElementById('stop-time').value).getTime()}`
+        return `&start_time=${fetchTimeSel().start.getTime()}&stop_time=${fetchTimeSel().end.getTime()}`
     }
 
     function refreshTRGraph () {
@@ -172,19 +182,25 @@
 
                 console.log(json);
 
+                let bounded = [
+                    {epoch: fetchTimeSel().end.getTime(), trophies: json.ans[0].player.trophies},
+                    ...json.ans.map(res => {return {epoch: new Date(res.epoch).getTime(), trophies: res.player.trophies};}),
+                    {epoch: fetchTimeSel().start.getTime(), trophies: json.ans[json.ans.length-1].player.trophies}
+                ];
+
                 document.getElementById("trophies").innerHTML = "";
                 document.getElementById("trophies").appendChild(Plot.plot({
                     ...stdParam,
                     x: {
-                        type: "time"
+                        type: "time",
+                        domain: [fetchTimeSel().start.getTime(), fetchTimeSel().end.getTime()]
                     },
                     y: {
                         grid: true
                     },
                     marks: [
-                        Plot.line(json.ans.map(res => {
-                            return {epoch: new Date(res.epoch).getTime(), trophies: res.player.trophies}
-                        }), {x: "epoch", y: "trophies"})
+                        Plot.line(bounded, {x: "epoch", y: "trophies"}),
+                        Plot.text(bounded, Plot.selectFirst({x: "epoch", y: "trophies", text: "trophies", textAnchor: "start", dx: 3}))
                     ]
                 }))
             }
@@ -202,6 +218,7 @@
 
                 let develop = [];
                 let sel = getBrawlerSelection();
+                let brawlers = sel;
 
                 json.ans.forEach(e => {
                     e.player.brawlers.forEach(b => {
@@ -215,18 +232,38 @@
                     });
                 });
 
+                let first = [];
+                let last = [];
+
+                brawlers.forEach((b) => {
+                    first.push(json.ans[0].player.brawlers
+                        .filter(b2 => b2.name === b).map((x) => {return {epoch: fetchTimeSel().end.getTime(), trophies: x.trophies, brawler: b};})[0]);
+                    last.push(json.ans[json.ans.length-1].player.brawlers
+                        .filter(b2 => b2.name === b).map((x) => {return {epoch: fetchTimeSel().start.getTime(), trophies: x.trophies, brawler: b};})[0]);
+                })
+
+                console.log("===============");
+                console.log({first, last});
+                console.log("===============");
+
+                develop = [...first, ...develop, ...last]
+
+                console.log("------------------------------------------");
+                console.log({develop});
+
                 document.getElementById("brawlers").innerHTML = "";
 
                 document.getElementById("brawlers").appendChild(Plot.plot({
                     ...stdParam,
                     x: {
-                        type: "time"
+                        type: "time",
+                        domain: [fetchTimeSel().start.getTime(), fetchTimeSel().end.getTime()]
                     },
                     y: {
                         grid: true
                     },
                     marks: [
-                        Plot.line(develop, {x: "epoch", y: "trophies", z: "brawler", stroke: "brawler"}),
+                        Plot.line(develop, {x: "epoch", y: "trophies", z: "brawler", stroke: "brawler", strokeWidth: 1}),
                         Plot.text(develop, Plot.selectFirst({x: "epoch", y: "trophies", z: "brawler", text: "brawler", textAnchor: "start", dx: 3}))
                     ]
                 }))
