@@ -1,16 +1,16 @@
 require("dotenv").config({path: __dirname + "/.env"});
-const fs = require("fs");
+let fs = require("fs");
 
-const mongodb = require("mongodb");
+let mongodb = require("mongodb");
 let MongoClient = mongodb.MongoClient;
 
-const dbname = "stats";
+let dbname = "stats";
 let url = `mongodb://${process.env["DB_USER"]}:${process.env["DB_PWD"]}@${process.env["DB_IP"]}:${process.env["DB_PORT"]}/`;
 
 let statsDB = null;
 let coll = null;
 
-const fastify = require("fastify")({
+let fastify = require("fastify")({
     ignoreTrailingSlash: true
 });
 

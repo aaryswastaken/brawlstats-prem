@@ -2,9 +2,9 @@
 
 require("dotenv").config({path: __dirname + "/.env"});
 
-const dbname = "stats";
+let dbname = "stats";
 
-const mongodb = require("mongodb");
+let mongodb = require("mongodb");
 var MongoClient = mongodb.MongoClient;
 
 var url = `mongodb://${process.env["DB_USER"]}:${process.env["DB_PWD"]}@${process.env["DB_IP"]}:${process.env["DB_PORT"]}/`;

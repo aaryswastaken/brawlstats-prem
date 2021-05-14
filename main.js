@@ -2,15 +2,15 @@
 /* eslint no-undef: "off" */
 
 require("dotenv").config({path: __dirname + "/.env"});
-const { Client } = require("brawlstars");
+let { Client } = require("brawlstars");
 
-const dbname = "stats";
-const refresh = 5000;
+let dbname = "stats";
+let refresh = 5000;
 
-const mongodb = require("mongodb");
+let mongodb = require("mongodb");
 var MongoClient = mongodb.MongoClient;
 
-const client = new Client(process.env["API_TOKEN"], {
+let client = new Client(process.env["API_TOKEN"], {
     cache: true, // default is true
 });
 
