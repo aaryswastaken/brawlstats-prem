@@ -47,6 +47,7 @@ fastify.post("/api", async function (req, res) {
     let limit = 0;
     let project = {};
     let sort = {"epoch": -1}; // Default : sort from newer to older
+    let forced = false;
 
     if("start_time" in req.query) {
         let epoch = Number.parseInt(req.query["start_time"], 10);
@@ -93,7 +94,13 @@ fastify.post("/api", async function (req, res) {
 
     let ans = await coll.find(query).sort({"epoch": -1}).project(project).limit(limit).toArray();
 
-    res.send({l: ans.length, query, flags, limit, ans});
+    if(ans.length === 0) { // if no battle found, for illustration purpose, show the next one
+        forced = true; // send flag of forced
+        delete query.epoch["$lte"]; // delete end time of request
+        ans = await coll.find(query).sort({"epoch": -1}).project(project).limit(1).toArray(); // force limit to 1
+    }
+
+    res.send({l: ans.length, query, flags, limit, ans, forced});
 });
 
 fastify.post("/graphs", function (req, res) {
