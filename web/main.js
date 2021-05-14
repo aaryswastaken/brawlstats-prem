@@ -111,7 +111,7 @@ fastify.post("/brawlers", async (req, res) => {
 
 MongoClient.connect(url, function(err, db) {
     if (err) {
-        /* eslint no-console: "error" */
+        /* eslint no-console: ["error", { allow: ["warn", "error"] }] */
         console.log("Error : "+url+"\n" + err);
         process.exit(1);
     }
@@ -126,7 +126,7 @@ MongoClient.connect(url, function(err, db) {
         }
 
         fastify.log.info(`server listening on ${address}`);
-        /* eslint no-console: "error" */
+        /* eslint no-console: ["error", { allow: ["warn", "error"] }] */
         console.log(`server listening on ${address}`);
     });
 });
