@@ -35,12 +35,12 @@ function getGraphs() {
 }
 
 
-fastify.get("/", (req, res) => {
+fastify.get("/", function (req, res) {
     let graphs = getGraphs();
     res.view("/templates/index.ejs", {graphs});
 });
 
-fastify.post("/api", async (req, res) => {
+fastify.post("/api", async function (req, res) {
     // req.query
     let query = {};
     let flags = {};
@@ -96,11 +96,11 @@ fastify.post("/api", async (req, res) => {
     res.send({l: ans.length, query, flags, limit, ans});
 });
 
-fastify.post("/graphs", (req, res) => {
+fastify.post("/graphs", function (req, res) {
     res.send(getGraphs());
 });
 
-fastify.post("/brawlers", async (req, res) => {
+fastify.post("/brawlers", async function (req, res) {
     let lastUser = await coll.find({"player": {"$ne": null}}).sort({"epoch": -1}).project({"player": 1}).limit(1).toArray();
     lastUser = lastUser[0].player;
 

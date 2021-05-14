@@ -1,4 +1,6 @@
-require('dotenv').config({path: __dirname + '/.env'});
+/* eslint no-console: ["error", { allow: ["log", "warn", "error"] }] */
+
+require("dotenv").config({path: __dirname + "/.env"});
 
 const dbname = "stats";
 
@@ -16,8 +18,8 @@ function extractPlayer(obj) {
 
     if("teams" in obj["battle"]) {
         obj["battle"]["teams"].forEach((team) => {
-            team.forEach(player => {source.push(player)});
-        })
+            team.forEach((player) => {source.push(player);});
+        });
     }
 
     if("players" in obj["battle"]) {
@@ -37,7 +39,6 @@ function extractPlayer(obj) {
 
 MongoClient.connect(url, function(err, db) {
     if (err) {
-        /* eslint no-console: "error" */
         console.log("Error : " + url + "\n" + err);
         process.exit(1);
     }
@@ -48,7 +49,6 @@ MongoClient.connect(url, function(err, db) {
     coll.find({"epoch": null}).toArray().then((docs) => {
         docs.forEach((obj) => {
             coll.updateOne({"_id": new mongodb.ObjectId(obj["_id"])}, {$set: {epoch: parseDate(obj["battleTime"])}});
-            /* eslint no-console: "error" */
             console.log(`Updating ${obj["_id"]}`);
         });
     });
@@ -56,7 +56,6 @@ MongoClient.connect(url, function(err, db) {
     coll.find({"extracted.player": null}).toArray().then((docs) => {
         docs.forEach((obj) => {
             coll.updateOne({"_id": new mongodb.ObjectId(obj["_id"])}, {$set: {"extracted.player": extractPlayer(obj)}});
-            /* eslint no-console: "error" */
             console.log(`Updating ${obj["_id"]}`);
         });
     });

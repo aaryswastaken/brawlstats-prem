@@ -1,3 +1,6 @@
+/* eslint no-console: ["error", { allow: ["log", "warn", "error"] }] */
+/* eslint no-undef: "off" */
+
 require("dotenv").config({path: __dirname + "/.env"});
 const { Client } = require("brawlstars");
 
@@ -15,7 +18,7 @@ var url = `mongodb://${process.env["DB_USER"]}:${process.env["DB_PWD"]}@${proces
 
 function doesBattleAlreadyExists(log, battleTime) {
     let ans = false;
-    log.forEach(battle => {ans = ans || (battle.battleTime === battleTime)});
+    log.forEach((battle) => {ans = ans || (battle.battleTime === battleTime);});
     return ans;
 }
 
@@ -94,7 +97,6 @@ function start(collection) {
                     collection.insertMany(tmp);
                 })
                 .catch((err) => {
-                    /* eslint no-console: ["error", { allow: ["warn", "error"] }] */
                     console.error(err);
                     process.exit(1);
                 });
@@ -104,7 +106,6 @@ function start(collection) {
 
 MongoClient.connect(url, function(err, db) {
     if (err) {
-        /* eslint no-console: ["error", { allow: ["warn", "error"] }] */
         console.log("Error : "+url+"\n" + err);
         process.exit(1);
     }
@@ -112,7 +113,6 @@ MongoClient.connect(url, function(err, db) {
     let statsDB = db.db(dbname);
     let coll = statsDB.collection(dbname);
 
-    /* eslint no-console: ["error", { allow: ["log", "warn", "error"] }] */
     console.log("STARTED !");
     start(coll);
 });
