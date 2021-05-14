@@ -97,10 +97,11 @@
                 document.getElementById("start-time").max = parsed.end;
                 document.getElementById("stop-time").max = parsed.end;
 
+                parsed.start.setMinutes(parsed.start.getMinutes() - parsed.start.getTimezoneOffset());
+                parsed.end.setMinutes(parsed.end.getMinutes() - parsed.end.getTimezoneOffset());
+
                 let dateReset = () => {
-                    parsed.start.setMinutes(parsed.start.getMinutes() - parsed.start.getTimezoneOffset());
                     document.getElementById('start-time').value = parsed.start.toISOString().slice(0, 16);
-                    parsed.end.setMinutes(parsed.end.getMinutes() - parsed.end.getTimezoneOffset());
                     document.getElementById('stop-time').value = parsed.end.toISOString().slice(0, 16);
                 }
 
@@ -339,12 +340,17 @@
                 let averages = []
 
                 let n = 0;
-                let max = 6;
+                let maxDays = 6;
+
+                let min = Math.min(...json.soloRank.map(r => r.battleCount));
+                let max = Math.max(...json.soloRank.map(r => r.battleCount));
+
+                let rThreshold = (min + (max - min)*0.8)-0.01;
 
                 // -------------- CALCULATE AVERAGES TROPHIES ---------
 
                 json.soloRank.forEach((rank) => {
-                    if (n < max) {
+                    if (n < maxDays) {
                         if (rank.date !== last) {
                             if (sum !== 0) {
                                 n += 1;
@@ -363,7 +369,8 @@
 
                         computed.push({
                             ...rank,
-                            avg: 0
+                            avg: 0,
+                            color: rank.battleCount >= rThreshold
                         });
 
                         sum += rank.battleCount * rank.rank;
@@ -376,7 +383,7 @@
                     date: last
                 });
 
-                console.log(averages)
+                console.log({averages, min, max, computed})
                 // -------------- END OF COMPUTING --------------
 
                 document.getElementById("ranks").innerHTML = "";
@@ -394,7 +401,8 @@
                     },
                     marks: [
                         Plot.cell(computed, {x: "date", y: "rank", fill: "battleCount"}),
-                        Plot.text(computed, {x: "date", y: "rank", text: "battleCount", fontSize: 12})
+                        Plot.text(computed.filter(x => x.color), {x: "date", y: "rank", text: "battleCount", fontSize: 12, fill: "#fff"}),
+                        Plot.text(computed.filter(x => !x.color), {x: "date", y: "rank", text: "battleCount", fontSize: 12, fill: "#000"})
                     ]
                 }));
 
