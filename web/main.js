@@ -1,4 +1,4 @@
-require('dotenv').config({path: __dirname + '/.env'});
+require("dotenv").config({path: __dirname + "/.env"});
 const fs = require("fs");
 
 const mongodb = require("mongodb");
@@ -10,19 +10,19 @@ let url = `mongodb://${process.env["DB_USER"]}:${process.env["DB_PWD"]}@${proces
 let statsDB = null;
 let coll = null;
 
-const fastify = require('fastify')({
+const fastify = require("fastify")({
     ignoreTrailingSlash: true
-})
+});
 
-fastify.register(require('point-of-view'), {
+fastify.register(require("point-of-view"), {
     engine: {
-        ejs: require('ejs')
+        ejs: require("ejs")
     }
-})
+});
 
 function secondLevel(obj, first, second, value) {
     if(!(first in obj)) {
-        obj[first] = {}
+        obj[first] = {};
     }
 
     obj[first][second] = value;
@@ -35,9 +35,9 @@ function getGraphs() {
 }
 
 
-fastify.get('/', (req, res) => {
+fastify.get("/", (req, res) => {
     let graphs = getGraphs();
-    res.view('/templates/index.ejs', {graphs});
+    res.view("/templates/index.ejs", {graphs});
 });
 
 fastify.post("/api", async (req, res) => {
@@ -51,32 +51,31 @@ fastify.post("/api", async (req, res) => {
     if("start_time" in req.query) {
         let epoch = Number.parseInt(req.query["start_time"], 10);
         if(!isNaN(epoch)) {
-            secondLevel(query, "epoch", "$gte", new Date(epoch))
+            secondLevel(query, "epoch", "$gte", new Date(epoch));
         }
     }
 
     if("end_time" in req.query) {
         let epoch = Number.parseInt(req.query["end_time"], 10);
         if(!isNaN(epoch)) {
-            secondLevel(query, "epoch", "$lte", new Date(epoch))
+            secondLevel(query, "epoch", "$lte", new Date(epoch));
         }
     }
 
     if("ranked" in req.query) {
-        secondLevel(query, "battle.type", (req.query["ranked"] === "0" ? "$ne":"$eq"), "ranked")
+        secondLevel(query, "battle.type", (req.query["ranked"] === "0" ? "$ne":"$eq"), "ranked");
     }
 
     if("need_player" in req.query) {
-        secondLevel(query, "player", (req.query["need_player"] !== "0" ? "$ne":"$eq"), null)
+        secondLevel(query, "player", (req.query["need_player"] !== "0" ? "$ne":"$eq"), null);
     }
 
     if("brawler" in req.query) {
-        // flags.specificBrawler = JSON.parse(req.query["brawler"]) // DEPRECATED
-        query["extracted.player.brawler.name"] = {"$in": JSON.parse(req.query["brawler"])}
+        query["extracted.player.brawler.name"] = {"$in": JSON.parse(req.query["brawler"])};
     }
 
     if("mode" in req.query) {
-        query["battle.mode"] = {"$in": JSON.parse(req.query["mode"])}
+        query["battle.mode"] = {"$in": JSON.parse(req.query["mode"])};
     }
 
     if("limit" in req.query) {
@@ -99,19 +98,20 @@ fastify.post("/api", async (req, res) => {
 
 fastify.post("/graphs", (req, res) => {
     res.send(getGraphs());
-})
+});
 
 fastify.post("/brawlers", async (req, res) => {
     let lastUser = await coll.find({"player": {"$ne": null}}).sort({"epoch": -1}).project({"player": 1}).limit(1).toArray();
     lastUser = lastUser[0].player;
-    
+
     let brawlers = lastUser.brawlers;
 
-    res.send(brawlers)
-})
+    res.send(brawlers);
+});
 
 MongoClient.connect(url, function(err, db) {
     if (err) {
+        /* eslint no-console: "error" */
         console.log("Error : "+url+"\n" + err);
         process.exit(1);
     }
@@ -119,13 +119,14 @@ MongoClient.connect(url, function(err, db) {
     statsDB = db.db(dbname);
     coll = statsDB.collection(dbname);
 
-    fastify.listen(3000, '0.0.0.0', function (err, address) {
+    fastify.listen(3000, "0.0.0.0", function (err, address) {
         if (err) {
-            fastify.log.error(err)
-            process.exit(1)
+            fastify.log.error(err);
+            process.exit(1);
         }
 
         fastify.log.info(`server listening on ${address}`);
+        /* eslint no-console: "error" */
         console.log(`server listening on ${address}`);
     });
 });
