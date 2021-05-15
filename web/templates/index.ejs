@@ -201,12 +201,16 @@
                 // ];
                 let bounded = json.ans.map(res => {return {epoch: new Date(res.epoch).getTime(), trophies: res.player.trophies};});
 
-                if(timeEn().start) {
+                if(json.forced) {
+                    bounded = [];
+                }
+
+                if(timeEn().start || json.forced) {
                     console.log("START EN");
                     bounded = [...bounded, {epoch: fetchTimeSel().start.getTime(), trophies: json.ans[json.ans.length-1].player.trophies}];
                 }
 
-                if(timeEn().stop) {
+                if(timeEn().stop || json.forced) {
                     console.log("STOP EN");
                     bounded = [{epoch: fetchTimeSel().end.getTime(), trophies: json.ans[0].player.trophies}, ...bounded]
                 }
@@ -271,12 +275,16 @@
 
                 // develop = [...first, ...develop, ...last]
 
-                if(timeEn().start) {
+                if(json.forced) {  // if is forced, the data given is for illustration purpose only and so, we have to delete it
+                    develop = [];
+                }
+
+                if(timeEn().start || json.forced) {  // if is forced, we should in any case append the last bound
                     console.log("START EN");
                     develop = [...develop, ...last];
                 }
 
-                if(timeEn().stop) {
+                if(timeEn().stop || json.forced) { // if is forced, we should in any case append the first bound
                     console.log("STOP EN");
                     develop = [...first, ...develop];
                 }

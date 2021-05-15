@@ -100,6 +100,13 @@ fastify.post("/api", async function (req, res) {
         ans = await coll.find(query).sort({"epoch": -1}).project(project).limit(1).toArray(); // force limit to 1
     }
 
+    if(ans.length === 0) { // if no next one is found, take the last one
+        forced = true; // send flag of forced
+        query.epoch["$lte"] = query.epoch["$gte"];
+        delete query.epoch["$gte"]; // delete end time of request
+        ans = await coll.find(query).sort({"epoch": 1}).project(project).limit(1).toArray(); // force limit to 1
+    }
+
     res.send({l: ans.length, query, flags, limit, ans, forced});
 });
 
