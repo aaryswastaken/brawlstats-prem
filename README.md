@@ -13,7 +13,7 @@ DB_USER=<username you set in mongodb.env>
 DB_PWD=<password you set in mongodb.env>
 DB_IP=localhost
 DB_PORT=27017
-PLAYER_TAG=#<your brastars tag>
+PLAYER_TAG=#<your brawlstars tag>
 ```
 
 #### mongodb.env
@@ -37,3 +37,5 @@ Then you just have to run `docker-compose up -d` to start the containers.
 ### Additional information 
 
 The mongo database is actually exposed for development purpose, to fix it, deleting the `mongo_net` in the [docker-compose.yaml](https://github.com/vsahler/brawlstats-prem/blob/main/docker-compose.yaml) should work 
+
+To get an api key, visit this page (you'll need to register or login) [developer.brawlstars.com](https://developer.brawlstars.com/#/)
