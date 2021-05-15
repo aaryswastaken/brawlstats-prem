@@ -40,11 +40,18 @@ function getGraphs() {
 }
 
 function verifyCookie(req, res) {
-    if("time" in req.cookies) {
-        return ""
-    } else {
+    if(!("time" in req.cookies)) {
         req.cookies.time = "{\"startTime\": -1, \"stopTime\": -1}"; // set undefined values (-1 => undefined in this code)
         res.setCookie("time", "{\"startTime\": -1, \"stopTime\": -1}", {
+            domain: "localhost",
+            path: "/",
+            signed: false
+        })
+    }
+
+    if(!("brawlerSel" in req.cookies)) {
+        req.cookies.brawlerSel = "[\"*\"]";
+        res.setCookie("brawlerSel", "[\"*\"]", {
             domain: "localhost",
             path: "/",
             signed: false
@@ -63,7 +70,7 @@ fastify.get("/", function (req, res) {
 
     let graphs = getGraphs();
 
-    res.view("/templates/index.ejs", {graphs, time: req.cookies.time});
+    res.view("/templates/index.ejs", {graphs, time: req.cookies.time, brawlers: req.cookies.brawlerSel});
 });
 
 fastify.post("/api", async function (req, res) {
@@ -77,6 +84,7 @@ fastify.post("/api", async function (req, res) {
 
     let startEpoch = -1; // set to null
     let stopEpoch = -1;
+    let brawlers = ["*"];
 
     if("start_time" in req.query) {
         let epoch = Number.parseInt(req.query["start_time"], 10);
@@ -104,6 +112,7 @@ fastify.post("/api", async function (req, res) {
 
     if("brawler" in req.query) {
         query["extracted.player.brawler.name"] = {"$in": JSON.parse(req.query["brawler"])};
+        brawlers = JSON.parse(req.query["brawler"])
     }
 
     if("mode" in req.query) {
@@ -123,7 +132,7 @@ fastify.post("/api", async function (req, res) {
         sort = JSON.parse(req.query["sort"]);
     }
 
-    let ans = await coll.find(query).sort({"epoch": -1}).project(project).limit(limit).toArray();
+    let ans = await coll.find(query).sort(sort).project(project).limit(limit).toArray();
 
     if(ans.length === 0) { // if no battle found, for illustration purpose, show the next one
         forced = true; // send flag of forced
@@ -147,6 +156,16 @@ fastify.post("/api", async function (req, res) {
             path: "/",
             signed: false
         });
+
+    res.setCookie(
+        "brawlerSel",
+        JSON.stringify(brawlers),
+        {
+            domain: "localhost",
+            path: "/",
+            signed: false
+        }
+    )
 
     res.send({l: ans.length, query, flags, limit, ans, forced});
 });

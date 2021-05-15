@@ -74,6 +74,9 @@
     let timeCookie = {startTime: -1, stopTime: -1}; // set to default in case of no cookie
     timeCookie = JSON.parse("<%= time %>".replace(/&#39;/gm, "\"").replace(/&#34;/gm, "\"")); // import time cookie
 
+    let brawlerSelCookie = ["*"]; // set to default in case of no cookie
+    brawlerSelCookie = JSON.parse("<%= brawlers %>".replace(/&#39;/gm, "\"").replace(/&#34;/gm, "\"")); // import time cookie
+
     const maxSel = 10;
 
     let stdParam = {
@@ -92,7 +95,7 @@
 
                 let parsed = {
                     start: new Date(dates.start),
-                    end: new Date(dates.end)
+                    end: new Date()
                 }
 
                 console.log({dates, parsed});
@@ -199,6 +202,8 @@
 
                 let id = 0;
 
+                console.log({brawlerSelCookie})
+
                 brawlers.map(b => b.name).forEach(brawler => {
                     if(id % maxSel === 0) {
                         let s = document.createElement("div");
@@ -207,7 +212,12 @@
                     }
                     let l = brawler.toLowerCase();
                     let f = brawler.slice(0, 1) + l.slice(1, brawler.length);
-                    document.getElementById(`selection${ (id - id % maxSel) / maxSel }`).innerHTML += `<div id="${l}Div"><input type="checkbox" class="selection" id="${l}" checked> <label for="${l}" id="${l}Label">${f}</label></div>`;
+
+                    let checked = (brawlerSelCookie.includes("*") || brawlerSelCookie.includes(brawler)) ? "checked":"";
+
+                    console.log({checked, brawler})
+
+                    document.getElementById(`selection${ (id - id % maxSel) / maxSel }`).innerHTML += `<div id="${l}Div"><input type="checkbox" class="selection" id="${l}" ${checked}> <label for="${l}" id="${l}Label">${f}</label></div>`;
 
                     id += 1;
                 });
@@ -254,8 +264,8 @@
     }
 
     function timeSelSuffix() {
-        let start = `&start_time=${fetchTimeSel().start.getTime()-(new Date().getTimezoneOffset() * 60 * 1000)}`; // prepare args + correct drift
-        let stop = `&end_time=${fetchTimeSel().end.getTime()-(new Date().getTimezoneOffset() * 60 * 1000)}`;
+        let start = `&start_time=${fetchTimeSel().start.getTime()}`; // prepare args + correct drift
+        let stop = `&end_time=${fetchTimeSel().end.getTime()}`;
         let ans = (document.getElementById("startEnable").checked ? start:"")+(document.getElementById("stopEnable").checked ? stop:"");
         console.log({timeSelSuffix: ans})
         return ans
@@ -388,7 +398,7 @@
                 }))
             }
         }
-        brawlerREQ.open("POST", `/api?need_player=1&project={"epoch": 1, "player.brawlers": 1}`+timeSelSuffix(), true);
+        brawlerREQ.open("POST", `/api?need_player=1&project={"epoch": 1, "player.brawlers": 1}`+timeSelSuffix()+brawlerSuffix(), true);
         brawlerREQ.send();
     }
 
