@@ -50,6 +50,7 @@ services:
     env_file:
       - .env
       - docker.env
+      - web.env
     ports:
       - 3000:3000
     networks:

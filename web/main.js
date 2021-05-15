@@ -20,6 +20,11 @@ fastify.register(require("point-of-view"), {
     }
 });
 
+fastify.register(require('fastify-cookie'), {
+    secret: process.env["COOKIE_SECRET"],   // for cookies signature
+    parseOptions: {}                        // options for parsing cookies
+})
+
 function secondLevel(obj, first, second, value) {
     if(!(first in obj)) {
         obj[first] = {};
@@ -34,10 +39,31 @@ function getGraphs() {
     return JSON.parse(fs.readFileSync("./graphs.json"));
 }
 
+function verifyCookie(req, res) {
+    if("time" in req.cookies) {
+        return ""
+    } else {
+        req.cookies.time = "{\"startTime\": -1, \"stopTime\": -1}"; // set undefined values (-1 => undefined in this code)
+        res.setCookie("time", "{\"startTime\": -1, \"stopTime\": -1}", {
+            domain: "localhost",
+            path: "/",
+            signed: false
+        })
+    }
+}
+
+fastify.get("/cookieTest", function (req, res) {
+    verifyCookie(req, res);
+
+    res.send("Ok").end(200);
+});
 
 fastify.get("/", function (req, res) {
+    verifyCookie(req, res)
+
     let graphs = getGraphs();
-    res.view("/templates/index.ejs", {graphs});
+
+    res.view("/templates/index.ejs", {graphs, time: req.cookies.time});
 });
 
 fastify.post("/api", async function (req, res) {
@@ -49,10 +75,14 @@ fastify.post("/api", async function (req, res) {
     let sort = {"epoch": -1}; // Default : sort from newer to older
     let forced = false;
 
+    let startEpoch = -1; // set to null
+    let stopEpoch = -1;
+
     if("start_time" in req.query) {
         let epoch = Number.parseInt(req.query["start_time"], 10);
         if(!isNaN(epoch)) {
             secondLevel(query, "epoch", "$gte", new Date(epoch));
+            startEpoch = epoch;
         }
     }
 
@@ -60,6 +90,7 @@ fastify.post("/api", async function (req, res) {
         let epoch = Number.parseInt(req.query["end_time"], 10);
         if(!isNaN(epoch)) {
             secondLevel(query, "epoch", "$lte", new Date(epoch));
+            stopEpoch = epoch;
         }
     }
 
@@ -106,6 +137,16 @@ fastify.post("/api", async function (req, res) {
         delete query.epoch["$gte"]; // delete end time of request
         ans = await coll.find(query).sort({"epoch": 1}).project(project).limit(1).toArray(); // force limit to 1
     }
+
+    // setup cookies
+    res.setCookie(
+        "time",
+        JSON.stringify({startTime: startEpoch, stopTime: stopEpoch}),
+        {
+            domain: "localhost",
+            path: "/",
+            signed: false
+        });
 
     res.send({l: ans.length, query, flags, limit, ans, forced});
 });

@@ -6,6 +6,7 @@ data/
 package-lock.json
 .env
 mongodb.env
+web.env
 
 graphy.py
 test.ipynb

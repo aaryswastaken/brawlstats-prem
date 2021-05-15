@@ -71,6 +71,9 @@
 <script>
     let graphs = JSON.parse("<%= JSON.stringify(graphs) %>".replace(/&#34;/gm, "\""));
 
+    let timeCookie = {startTime: -1, stopTime: -1}; // set to default in case of no cookie
+    timeCookie = JSON.parse("<%= time %>".replace(/&#39;/gm, "\"").replace(/&#34;/gm, "\"")); // import time cookie
+
     const maxSel = 10;
 
     let stdParam = {
@@ -80,7 +83,7 @@
         width: Number.parseInt((window.outerWidth * 3 / 5).toString().split(".")[0], 10)
     }
 
-    function setupDateSelection() {
+    function setupDateSelection(then) {
         let selREQ = new XMLHttpRequest();
 
         selREQ.onreadystatechange = function () {
@@ -108,13 +111,50 @@
                     document.getElementById('stop-time').value = parsed.end.toISOString().slice(0, 16);
                 }
 
+                let setDateFromCookie = () => {
+                    console.log("Set time from cookies");
+                    dateReset(); // In order to have a base to lay on
+                    if(timeCookie.startTime !== -1) {
+                        console.log("Start time is set ... seting up")
+                        document.getElementById("start-time").value = new Date(timeCookie.startTime).toISOString().slice(0, 16);
+                        document.getElementById("startEnable").checked = true;
+                    }
+
+                    if(timeCookie.stopTime !== -1) {
+                        console.log("Stop time is set ... seting up")
+                        document.getElementById("stop-time").value = new Date(timeCookie.stopTime).toISOString().slice(0, 16);
+                        document.getElementById("stopEnable").checked = true;
+                    }
+                }
+
                 document.getElementById("datereset").onclick = dateReset;
-                dateReset();
+                // dateReset(); // DEPRECATED BY TIME COOKIE
+                setDateFromCookie();
+
+                then();
             }
         }
 
         selREQ.open("POST", "/interval", true);
         selREQ.send();
+    }
+
+    function invertTimeSelIfNeeded() {
+        let start = new Date(document.getElementById("start-time").value).getTime();
+        let stop  = new Date(document.getElementById("stop-time").value).getTime();
+
+        if(start < stop) {
+            return ""
+        }
+
+        if (start === stop) { // create a suffisant gap to retrieve data
+            document.getElementById("stop-time").value = new Date(stop - 1000).toISOString().slice(0, 16);  // get 1s off stop time
+        }
+
+        if (start > stop) {   // invert both start and stop
+            document.getElementById("start-time").value = new Date(stop).toISOString().slice(0, 16);
+            document.getElementById("stop-time").value = new Date(start).toISOString().slice(0, 16);
+        }
     }
 
     function setupSel(then=()=>{}) {
@@ -141,10 +181,13 @@
 
                 console.log(brawlers);
 
-                document.getElementById("refreshBrawler").onclick = then;
+                document.getElementById("refreshBrawler").onclick = () => {
+                    invertTimeSelIfNeeded();
+                    then();
+                };
 
-                setupDateSelection();
-                then();
+                setupDateSelection(then);
+                // then();
             }
         }
 
@@ -178,8 +221,8 @@
     }
 
     function timeSelSuffix() {
-        let start = `&start_time=${fetchTimeSel().start.getTime()}`;
-        let stop = `&end_time=${fetchTimeSel().end.getTime()}`;
+        let start = `&start_time=${fetchTimeSel().start.getTime()-(new Date().getTimezoneOffset() * 60 * 1000)}`; // prepare args + correct drift
+        let stop = `&end_time=${fetchTimeSel().end.getTime()-(new Date().getTimezoneOffset() * 60 * 1000)}`;
         let ans = (document.getElementById("startEnable").checked ? start:"")+(document.getElementById("stopEnable").checked ? stop:"");
         console.log({timeSelSuffix: ans})
         return ans
@@ -204,6 +247,8 @@
                 if(json.forced) {
                     bounded = [];
                 }
+
+                console.log({timeEN: timeEn()})
 
                 if(timeEn().start || json.forced) {
                     console.log("START EN");

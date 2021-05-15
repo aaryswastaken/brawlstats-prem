@@ -23,6 +23,11 @@ MONGO_INITDB_ROOT_PASSWORD=<database root password>
 MONGO_INITDB_DATABASE=stats
 ```
 
+#### web.env
+```dosini
+COOKIE_SECRET=<your cookie passphrase>
+```
+
 Note that the parameter `MONGO_INITDB_DATABASE` is the one used in [main.js](https://github.com/vsahler/brawlstats-prem/blob/main/main.js) in the variable `dbname`
 
 The DB_IP parameter is overwritten by [docker.env](https://github.com/vsahler/brawlstats-prem/blob/main/docker.env) when used in the docker, as set in [docker-compose.yaml](https://github.com/vsahler/brawlstats-prem/blob/main/docker-compose.yaml)
