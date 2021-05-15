@@ -108,7 +108,8 @@
 
                 let dateReset = () => {
                     document.getElementById('start-time').value = parsed.start.toISOString().slice(0, 16);
-                    document.getElementById('stop-time').value = parsed.end.toISOString().slice(0, 16);
+                    // document.getElementById('stop-time').value = parsed.end.toISOString().slice(0, 16);
+                    document.getElementById("stop-time").value = new Date().toISOString().slice(0, 16);
                 }
 
                 let setDateFromCookie = () => {
@@ -130,6 +131,7 @@
                 document.getElementById("datereset").onclick = dateReset;
                 // dateReset(); // DEPRECATED BY TIME COOKIE
                 setDateFromCookie();
+                correctTimeSel();
 
                 then();
             }
@@ -139,21 +141,52 @@
         selREQ.send();
     }
 
-    function invertTimeSelIfNeeded() {
+    function correctTimeSel() {
+        console.log("CHECKING FOR TIME ERRORS");
         let start = new Date(document.getElementById("start-time").value).getTime();
         let stop  = new Date(document.getElementById("stop-time").value).getTime();
 
+        let stopChanged = false;
+        let startChanged= false;
+
+        let actual = new Date().getTime();
+
+        if(stop > actual) {
+            console.log("IS BIGGER !")
+            stop = actual;
+            stopChanged = true;
+        }
+
+        // CHECK IF INVERTED
+
         if(start < stop) {
-            return ""
+            ;
         }
 
         if (start === stop) { // create a suffisant gap to retrieve data
-            document.getElementById("stop-time").value = new Date(stop - 1000).toISOString().slice(0, 16);  // get 1s off stop time
+            stop = stop - 1000; // get 1s off stop time
+            stopChanged = true;
         }
 
         if (start > stop) {   // invert both start and stop
-            document.getElementById("start-time").value = new Date(stop).toISOString().slice(0, 16);
-            document.getElementById("stop-time").value = new Date(start).toISOString().slice(0, 16);
+            let t = stop;
+            stop = start;
+            start = t;
+
+            startChanged = true;
+            stopChanged = true;
+        }
+
+        console.log({startChanged, stopChanged});
+
+        if(startChanged) {
+            document.getElementById("start-time").value = new Date(start).toISOString().slice(0, 16);
+            console.log("CHANGED START");
+        }
+
+        if(stopChanged) {
+            document.getElementById("stop-time").value = new Date(stop).toISOString().slice(0, 16);
+            console.log("CHANGED STOP");
         }
     }
 
@@ -182,7 +215,7 @@
                 console.log(brawlers);
 
                 document.getElementById("refreshBrawler").onclick = () => {
-                    invertTimeSelIfNeeded();
+                    correctTimeSel();
                     then();
                 };
 
